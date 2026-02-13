@@ -1,0 +1,23 @@
+<h2 style="margin-top: 30px;">Key Findings</h2>
+<table class="findings-table">
+    <thead>
+        <tr>
+            <th style="width: 15%;">Severity</th>
+            <th style="width: 30%;">Issue</th>
+            <th style="width: 55%;">Detail</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Details.Findings}}
+        <tr>
+            <td class="severity-{{.Severity}}">{{.Severity}}</td>
+            <td>{{.Title}}</td>
+            <td>{{.Detail}}</td>
+        </tr>
+        {{else}}
+        <tr>
+            <td colspan="3" style="text-align: center;">No critical findings. Great job!</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>

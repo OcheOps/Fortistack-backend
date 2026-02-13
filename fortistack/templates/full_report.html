@@ -1,0 +1,52 @@
+{{template "header.html" .}}
+
+<div style="text-align: center; margin-top: 100px; margin-bottom: 100px;">
+    <h1>Monthly Consolidated Report</h1>
+    <h3>Period: {{.ReportPeriodStart.Format "Jan 02"}} - {{.ReportPeriodEnd.Format "Jan 02, 2006"}}</h3>
+    <h1>{{.GlobalScore}} / 100</h1>
+    <p>Overall Risk Score</p>
+</div>
+
+<div class="page-break"></div>
+
+<h2>Executive Summary</h2>
+<p>This comprehensive report details the infrastructure posture for {{.TenantName}} over the specified period.</p>
+
+<h3>Score Breakdown</h3>
+{{template "score_card.html" .}}
+
+<div class="page-break"></div>
+
+<h2>Detailed Findings</h2>
+{{template "table.html" .}}
+
+<div class="page-break"></div>
+
+<h2>Category Analysis</h2>
+
+<h3>Availability ({{.Details.Score.Availability}}%)</h3>
+<p>Analysis of uptime metrics and service reliability.</p>
+
+<h3>Backup Integrity ({{.Details.Score.Backup}}%)</h3>
+<p>Verification of backup schedules, retention policies, and test restores.</p>
+
+<h3>Security Posture ({{.Details.Score.Security}}%)</h3>
+<p>Assessment of network exposure, vulnerability management, and access controls.</p>
+
+<h3>Compliance Readiness ({{.Details.Score.Compliance}}%)</h3>
+<p>Review of logging, auditing, and regulatory alignment.</p>
+
+<h3>Cost Hygiene ({{.Details.Score.Cost}}%)</h3>
+<p>Evaluation of resource utilization and spending trends.</p>
+
+<div class="page-break"></div>
+
+<h2>Recommendations & Validation</h2>
+<p>Based on the findings, FortiStack recommends the following actions:</p>
+<ol>
+    <li>Address high-severity vulnerabilities within 24 hours.</li>
+    <li>Schedule a disaster recovery drill.</li>
+    <li>Review IAM permissions for least privilege.</li>
+</ol>
+
+{{template "footer.html" .}}
