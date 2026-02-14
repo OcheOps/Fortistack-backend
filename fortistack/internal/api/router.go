@@ -24,6 +24,8 @@ func NewRouter(
 	// r.Use(middleware.Logger) // TODO: Implement logger middleware or use chi default
 
 	// Public Routes
+	r.Get("/healthz", handlers.Healthz)
+	r.Get("/readyz", handlers.Readyz)
 	r.Post("/auth/login", authHandler.Login)
 	r.Post("/auth/refresh", authHandler.Refresh)
 

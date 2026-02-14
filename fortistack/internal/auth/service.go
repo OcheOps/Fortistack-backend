@@ -65,7 +65,8 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (string, err
 	// Let's use parser with lenient claims.
 
 	// Actually, jwt.ParseWithClaims parses what fits.
-	claims, err := ValidateToken(refreshToken)
+	// Validate token
+	claims, err := ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token: %w", err)
 	}

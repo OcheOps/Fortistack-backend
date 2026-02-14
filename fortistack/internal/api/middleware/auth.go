@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
+	"fortistack/internal/api/responses"
 	"fortistack/internal/auth"
 )
 
@@ -17,13 +17,13 @@ func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			responses.ErrorJSON(w, http.StatusUnauthorized, responses.ErrUnauthorized)
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			responses.ErrorJSON(w, http.StatusUnauthorized, responses.ErrUnauthorized)
 			return
 		}
 
@@ -32,7 +32,7 @@ func RequireAuth(next http.Handler) http.Handler {
 		// Validate token
 		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
-			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			responses.ErrorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -47,7 +47,7 @@ func RequireRole(role auth.Role) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := r.Context().Value(UserKey).(*auth.Claims)
 			if !ok {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				responses.ErrorJSON(w, http.StatusUnauthorized, responses.ErrUnauthorized)
 				return
 			}
 
@@ -71,9 +71,7 @@ func RequireRole(role auth.Role) func(http.Handler) http.Handler {
 			}
 
 			if !allowed {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Forbidden"})
+				responses.ErrorJSON(w, http.StatusForbidden, responses.ErrForbidden)
 				return
 			}
 

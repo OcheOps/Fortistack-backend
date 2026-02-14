@@ -31,11 +31,13 @@ func SendEmail(ctx context.Context, recipients []string, tenantName, reportType 
 	msg := []byte(body)
 
 	// Context support for smtp is not direct in standard lib without wrapper, but we check ctx before sending.
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
 
-	return smtp.SendMail(addr, auth, from, recipients, msg)
+	op := fmt.Sprintf("email to %s", recipients[0])
+	return retry(ctx, op, func() error {
+		// Simple check before attempt
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return smtp.SendMail(addr, auth, from, recipients, msg)
+	})
 }

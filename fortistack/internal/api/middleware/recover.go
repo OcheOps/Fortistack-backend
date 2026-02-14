@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"encoding/json"
+	"fmt"
+	"fortistack/internal/api/responses"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -10,16 +11,17 @@ import (
 func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if err := recover(); err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-
-				response := map[string]string{
-					"error": "Internal Server Error",
+			if rvr := recover(); rvr != nil {
+				var err error
+				if e, ok := rvr.(error); ok {
+					err = e
+				} else {
+					err = fmt.Errorf("%v", rvr)
 				}
-				json.NewEncoder(w).Encode(response)
 
 				slog.Error("Panic recovered", "error", err, "stack", string(debug.Stack()))
+
+				responses.ErrorJSON(w, http.StatusInternalServerError, err)
 			}
 		}()
 		next.ServeHTTP(w, r)

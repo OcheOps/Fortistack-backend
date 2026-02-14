@@ -1,10 +1,13 @@
 package middleware
 
 import (
-	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"fortistack/internal/api/responses"
 
 	"golang.org/x/time/rate"
 )
@@ -47,17 +50,26 @@ func cleanupLoop() {
 
 func RateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := r.RemoteAddr
+		ip := ""
 		// If behind proxy (Standard approach uses X-Forwarded-For)
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			ip = forwarded
+			parts := strings.Split(forwarded, ",")
+			ip = strings.TrimSpace(parts[0])
+		}
+
+		if ip == "" {
+			host, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				// Fallback if RemoteAddr is not host:port (e.g. pipe)
+				ip = r.RemoteAddr
+			} else {
+				ip = host
+			}
 		}
 
 		limiter := getLimiter(ip)
 		if !limiter.Allow() {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Too many requests"})
+			responses.ErrorJSON(w, http.StatusTooManyRequests, http.ErrHandlerTimeout) // Or custom error
 			return
 		}
 		next.ServeHTTP(w, r)

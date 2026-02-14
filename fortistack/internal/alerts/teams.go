@@ -60,22 +60,24 @@ func SendTeams(ctx context.Context, webhookURL string, tenantName string, report
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(payload))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	return retry(ctx, "teams webhook", func() error {
+		req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(payload))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("teams webhook failed with status: %d", resp.StatusCode)
-	}
+		if resp.StatusCode >= 400 {
+			return fmt.Errorf("status: %d", resp.StatusCode)
+		}
 
-	return nil
+		return nil
+	})
 }
