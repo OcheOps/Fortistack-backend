@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fortistaticpassword}
       POSTGRES_DB: ${POSTGRES_DB:-fortistack}
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       # Optionally initialize with init.sql if needed, but we do migrations separately
     ports:
       - "5432:5432"
