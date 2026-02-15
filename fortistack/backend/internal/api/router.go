@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func NewRouter(
@@ -21,6 +22,16 @@ func NewRouter(
 	r.Use(chimiddleware.Recoverer) // Standard recovery
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RateLimit)
+
+	// CORS
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 	// r.Use(middleware.Logger) // TODO: Implement logger middleware or use chi default
 
 	// Public Routes
