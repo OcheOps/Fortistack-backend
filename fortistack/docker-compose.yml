@@ -20,7 +20,7 @@ services:
 
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile.api
     ports:
       - "8080:8080"
@@ -36,11 +36,11 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./reports_volume:/app/reports
+      - ./backend/reports_volume:/app/reports
 
   worker:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile.worker
     environment:
       DB_DSN: ${DB_DSN}
@@ -57,7 +57,18 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./reports_volume:/app/reports
+      - ./backend/reports_volume:/app/reports
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - api
 
 volumes:
   pgdata:

@@ -13,14 +13,13 @@ lint:
 
 migrate:
 	# Run SQL files
-	cat backend/internal/db/migrations/001_init.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
-	# cat backend/internal/db/migrations/002_indexes.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
-	
+	cat internal/db/migrations/001_init.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
+	cat internal/db/migrations/002_indexes.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
 	# Create default admin user (dynamic hash)
 	# This requires Go installed locally to run the hash generator
-	cat backend/cmd/admin/main.go > /dev/null || true # Ensure file exists
+	cat cmd/admin/main.go > /dev/null || true # Ensure file exists
 	# Use password123 as default admin password
-	HASH=$$(go run backend/cmd/admin/main.go password123); \
+	HASH=$$(go run cmd/admin/main.go password123); \
 	echo "INSERT INTO users (email, password_hash, role, is_active) VALUES ('admin@fortistack.local', '$$HASH', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;" | docker compose exec -T postgres psql -U fortistack -d fortistack
 
 run:

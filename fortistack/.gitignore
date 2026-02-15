@@ -1,6 +1,1 @@
-.env
-pgdata/
-reports/
-bin/
-tmp/
-.DS_Store
+# Backend\nbackend/\n\n# Frontend\nfrontend/\n\n# Data\npgdata/\n\n# Env\n.env\n.env.local\nbackend/.env\nfrontend/.env\nfrontend/.env.local\n
