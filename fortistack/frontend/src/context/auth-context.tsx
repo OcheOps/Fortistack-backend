@@ -3,13 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { LoginResponse, User } from '@/lib/types';
 import { jwtDecode } from 'jwt-decode';
-
-interface User {
-    user_id: string;
-    tenant_id?: string;
-    role: 'admin' | 'tenant_admin' | 'viewer';
-}
 
 interface AuthContextType {
     user: User | null;
@@ -20,47 +15,67 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+// Helper to decode token safely
+const decodeUser = (token: string): User | null => {
+    try {
+        const decoded: any = jwtDecode(token);
+        return {
+            user_id: decoded.sub || decoded.user_id,
+            tenant_id: decoded.tenant_id,
+            role: decoded.role || 'viewer', // default fallback
+            exp: decoded.exp
+        };
+    } catch (e) {
+        console.error('Failed to decode token', e);
+        return null;
+    }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            try {
-                const decoded: any = jwtDecode(token);
-                setUser({
-                    user_id: decoded.sub || decoded.user_id,
-                    tenant_id: decoded.tenant_id,
-                    role: decoded.role,
-                });
-            } catch (e) {
-                console.error('Invalid token', e);
-                localStorage.removeItem('access_token');
+        const initAuth = async () => {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                const user = decodeUser(token);
+                if (user) {
+                    // Check expiration
+                    if (user.exp && user.exp * 1000 < Date.now()) {
+                        // Token expired, could try refresh or just logout
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                        setUser(null);
+                    } else {
+                        setUser(user);
+                    }
+                } else {
+                    localStorage.removeItem('access_token');
+                }
             }
-        }
-        setLoading(false);
+            setLoading(false);
+        };
+        initAuth();
     }, []);
 
     const login = async (email: string, pass: string) => {
         try {
-            const res = await api.post('/auth/login', { email, password: pass });
-            const { access_token, refresh_token } = res.data.data;
+            // api.post throws error if failed
+            const data = await api.post<LoginResponse>('/auth/login', { email, password: pass });
+
+            const { access_token, refresh_token } = data;
 
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
 
-            const decoded: any = jwtDecode(access_token);
-            setUser({
-                user_id: decoded.sub || decoded.user_id,
-                tenant_id: decoded.tenant_id,
-                role: decoded.role,
-            });
+            const decodedUser = decodeUser(access_token);
+            setUser(decodedUser);
 
             router.push('/dashboard');
         } catch (err) {
-            console.error(err);
+            console.error('Login failed', err);
             throw err;
         }
     };

@@ -7,6 +7,25 @@ export type ApiEnvelope<T> = {
     } | null;
 };
 
+// Auth
+export type LoginRequest = {
+    email: string;
+    password: string;
+};
+
+export type LoginResponse = {
+    access_token: string;
+    refresh_token: string;
+};
+
+export type User = {
+    user_id: string;
+    tenant_id: string;
+    role: 'admin' | 'tenant_admin' | 'viewer';
+    exp?: number;
+};
+
+// Reports
 export type Report = {
     id: string;
     tenant_id: string;
@@ -26,7 +45,7 @@ export type Report = {
             cost: number;
         };
         findings: Array<{
-            severity: string;
+            severity: 'critical' | 'high' | 'medium' | 'low';
             title: string;
             detail: string;
         }>;

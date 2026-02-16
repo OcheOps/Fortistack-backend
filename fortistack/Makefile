@@ -20,7 +20,7 @@ migrate:
 	# This requires Go installed locally to run the hash generator
 	cat backend/cmd/admin/main.go > /dev/null || true # Ensure file exists
 	# Use password123 as default admin password
-	HASH=$$(go run backend/cmd/admin/main.go password123); \
+	HASH=$$(cd backend && go run cmd/admin/main.go password123); \
 	echo "INSERT INTO users (email, password_hash, role, is_active) VALUES ('admin@fortistack.local', '$$HASH', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;" | docker compose exec -T postgres psql -U fortistack -d fortistack
 
 run:

@@ -8,9 +8,7 @@ export function useTenants() {
     return useQuery<Tenant[]>({
         queryKey: ['tenants'],
         queryFn: async () => {
-            const { data } = await api.get('/tenants');
-            if (data.error) throw data.error;
-            return (data.data as Tenant[]) || [];
+            return await api.get<Tenant[]>('/tenants');
         }
     });
 }
@@ -19,9 +17,7 @@ export function useTenant(id: string) {
     return useQuery<Tenant>({
         queryKey: ['tenants', id],
         queryFn: async () => {
-            const { data } = await api.get(`/tenants/${id}`);
-            if (data.error) throw data.error;
-            return data.data as Tenant;
+            return await api.get<Tenant>(`/tenants/${id}`);
         },
         enabled: !!id
     });
@@ -31,9 +27,7 @@ export function useCreateTenant() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async (input: Partial<Tenant>) => {
-            const { data } = await api.post('/tenants', input);
-            if (data.error) throw data.error;
-            return data.data as Tenant;
+            return await api.post<Tenant>('/tenants', input);
         },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] })
     });
@@ -45,9 +39,9 @@ export function useReports(tenantId: string) {
     return useQuery<Report[]>({
         queryKey: ['reports', tenantId],
         queryFn: async () => {
-            const { data } = await api.get(`/tenants/${tenantId}/reports`);
-            if (data.error) throw data.error;
-            return (data.data as Report[]) || [];
+            // The API likely returns a list of reports. 
+            // If the backend returns { data: [...] }, api.get unwraps it to [...]
+            return await api.get<Report[]>(`/tenants/${tenantId}/reports`);
         },
         enabled: !!tenantId
     });
@@ -57,9 +51,7 @@ export function useGenerateSnapshot() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async ({ tenantId, input }: { tenantId: string; input: RiskInput }) => {
-            const { data } = await api.post(`/tenants/${tenantId}/reports/snapshot`, input);
-            if (data.error) throw data.error;
-            return data.data as Report;
+            return await api.post<Report>(`/tenants/${tenantId}/reports/snapshot`, input);
         },
         onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['reports', vars.tenantId] })
     });
@@ -68,17 +60,25 @@ export function useGenerateSnapshot() {
 export function useDownloadReport() {
     return useMutation({
         mutationFn: async (reportId: string) => {
-            const res = await api.get(`/reports/${reportId}/download`, {
-                responseType: 'blob'
+            const token = localStorage.getItem('access_token');
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+            const url = `${baseUrl.replace(/\/$/, '')}/reports/${reportId}/download`;
+
+            const res = await fetch(url, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
-            // Force download
-            const url = window.URL.createObjectURL(new Blob([res.data]));
+
+            if (!res.ok) throw new Error('Download failed');
+
+            const blob = await res.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = url;
+            link.href = downloadUrl;
             link.setAttribute('download', `report-${reportId}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.URL.revokeObjectURL(downloadUrl);
         }
     });
 }
@@ -90,14 +90,11 @@ export function useAlertConfig(tenantId: string) {
         queryKey: ['alert-config', tenantId],
         queryFn: async () => {
             try {
-                const { data } = await api.get(`/tenants/${tenantId}/alert-config`);
-                // Backend might return null data if no config exists, or 404
-                if (data.error) throw data.error;
-                return data.data as AlertConfig;
+                return await api.get<AlertConfig>(`/tenants/${tenantId}/alert-config`);
             } catch (error: any) {
-                // Determine if 404 or empty
-                if (error.response?.status === 404) return null;
-                throw error;
+                // Return null if not found or error, let UI handle empty state
+                console.warn('Failed to fetch alert config', error);
+                return null;
             }
         },
         enabled: !!tenantId,
@@ -109,9 +106,7 @@ export function useUpdateAlertConfig() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async ({ tenantId, config }: { tenantId: string; config: Partial<AlertConfig> }) => {
-            const { data } = await api.put(`/tenants/${tenantId}/alert-config`, config);
-            if (data.error) throw data.error;
-            return data.data as AlertConfig;
+            return await api.put<AlertConfig>(`/tenants/${tenantId}/alert-config`, config);
         },
         onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['alert-config', vars.tenantId] })
     });

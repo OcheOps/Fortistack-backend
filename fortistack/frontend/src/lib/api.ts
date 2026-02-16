@@ -2,9 +2,21 @@ import { ApiEnvelope } from './types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
+class ApiError extends Error {
+    code: string;
+    details?: any;
+
+    constructor(message: string, code: string = 'UNKNOWN_ERROR', details?: any) {
+        super(message);
+        this.name = 'ApiError';
+        this.code = code;
+        this.details = details;
+    }
+}
+
 class ApiClient {
-    private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiEnvelope<T>> {
-        const url = `${BASE_URL}${endpoint}`;
+    private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const url = `${BASE_URL.replace(/\/$/, '')}${endpoint}`;
         const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
         const headers: HeadersInit = {
@@ -21,11 +33,11 @@ class ApiClient {
         try {
             const response = await fetch(url, config);
 
-            // Handle 401 Unauthorized (Attempt Refresh)
-            if (response.status === 401 && !url.includes('/auth/refresh')) {
+            // Handle 401 Unauthorized (Attempt Refresh or Logout)
+            if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/refresh')) {
+                // Prevent infinite loop if refresh itself fails
                 const refreshed = await this.refreshToken();
                 if (refreshed) {
-                    // Retry original request with new token
                     const newToken = localStorage.getItem('access_token');
                     return this.request<T>(endpoint, {
                         ...options,
@@ -36,34 +48,40 @@ class ApiClient {
                     });
                 } else {
                     this.logout();
-                    throw new Error('Session expired');
+                    throw new ApiError('Session expired', 'UNAUTHORIZED');
                 }
             }
 
-            let data;
-            try {
+            let data: ApiEnvelope<T> | null = null;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
                 data = await response.json();
-            } catch (err) {
-                if (!response.ok) throw new Error(`Request failed: ${response.status} ${response.statusText}`);
             }
 
-            // Check for envelope error
-            if (data && data.error) {
-                // If backend sends enveloped error
-                throw new Error(data.error.message || JSON.stringify(data.error));
+            if (!response.ok) {
+                if (data?.error) {
+                    throw new ApiError(data.error.message, data.error.code, data.error.details);
+                }
+                throw new ApiError(`Request failed with status ${response.status}`, 'HTTP_ERROR');
             }
 
-            // If data is null/undefined but no error field? 
-            // Our envelope is { data: ..., error: ... }
-            if (data && data.data === undefined && !data.error) {
-                // Maybe raw response?
-                return { data } as any;
+            // Unwrap data
+            if (data && data.data !== undefined) {
+                return data.data;
             }
 
-            return data;
-        } catch (error: any) {
+            // Some endpoints might return empty body or just { success: true } without data wrapper if not enveloped?
+            // But per contract, we expect envelope. If data is missing but no error, return as is or casting?
+            // Safest to return data as T if it exists, otherwise return the whole object if T allows it, or null.
+            return (data as unknown) as T;
+
+        } catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            // Network errors, etc.
             console.error(`API Request Failed: ${endpoint}`, error);
-            throw error;
+            throw new ApiError(error instanceof Error ? error.message : 'Unknown network error', 'NETWORK_ERROR');
         }
     }
 
@@ -72,16 +90,16 @@ class ApiClient {
         if (!refreshToken) return false;
 
         try {
-            const response = await fetch(`${BASE_URL}/auth/refresh`, {
+            const response = await fetch(`${BASE_URL.replace(/\/$/, '')}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refresh_token: refreshToken }),
             });
 
             if (response.ok) {
-                const data = await response.json();
-                if (data.data?.access_token) {
-                    localStorage.setItem('access_token', data.data.access_token);
+                const json = await response.json();
+                if (json.data?.access_token) {
+                    localStorage.setItem('access_token', json.data.access_token);
                     return true;
                 }
             }
@@ -104,17 +122,24 @@ class ApiClient {
         return this.request<T>(endpoint, { method: 'GET' });
     }
 
-    post<T>(endpoint: string, body: any) {
+    post<T>(endpoint: string, body?: any) {
         return this.request<T>(endpoint, {
             method: 'POST',
-            body: JSON.stringify(body),
+            body: body ? JSON.stringify(body) : undefined,
         });
     }
 
-    put<T>(endpoint: string, body: any) {
+    put<T>(endpoint: string, body?: any) {
         return this.request<T>(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(body),
+            body: body ? JSON.stringify(body) : undefined,
+        });
+    }
+
+    patch<T>(endpoint: string, body?: any) {
+        return this.request<T>(endpoint, {
+            method: 'PATCH',
+            body: body ? JSON.stringify(body) : undefined,
         });
     }
 
