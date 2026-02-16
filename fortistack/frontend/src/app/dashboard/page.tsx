@@ -4,42 +4,36 @@ import { useAuth } from '@/context/auth-context';
 import DashboardLayout from '@/components/layout/dashboard-layout';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useReports } from '@/hooks/use-queries';
-import { ShieldAlert, ShieldCheck, FileText, Activity, AlertTriangle, CheckCircle, TrendingUp, Download, ArrowRight } from 'lucide-react';
+import { ShieldCheck, FileText, Activity, AlertTriangle, CheckCircle, TrendingUp, Download, ArrowRight, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
     const { user } = useAuth();
     const { data: reports, isLoading } = useReports(user?.tenant_id || '');
 
-    const sortedReports = reports?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || [];
-    const latestReport = sortedReports[0];
+    const sorted = [...(reports || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const latest = sorted[0];
 
-    const getScoreColor = (score: number) => {
-        if (score >= 90) return 'text-emerald-500';
-        if (score >= 70) return 'text-amber-500';
-        return 'text-rose-500';
-    };
-
-    const getScoreBadge = (score: number) => {
-        if (score >= 90) return <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">Excellent</Badge>;
-        if (score >= 70) return <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20">Good</Badge>;
-        return <Badge className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20">Critical</Badge>;
-    };
+    const scoreColor = (s: number) => s >= 90 ? 'text-emerald-400' : s >= 70 ? 'text-amber-400' : 'text-rose-400';
+    const scoreBg = (s: number) => s >= 90 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : s >= 70 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    const scoreLabel = (s: number) => s >= 90 ? 'Excellent' : s >= 70 ? 'Good' : 'Critical';
 
     if (isLoading) {
         return (
             <DashboardLayout>
-                <div className="grid gap-6 md:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-48 rounded-xl bg-card border border-border" />
-                    ))}
-                </div>
-                <div className="mt-8">
-                    <Skeleton className="h-96 w-full rounded-xl bg-card border border-border" />
+                <div className="space-y-8">
+                    <div>
+                        <Skeleton className="h-8 w-40 bg-[#1D2A44]" />
+                        <Skeleton className="h-4 w-72 mt-2 bg-[#1D2A44]" />
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-xl bg-[#111A2E] border border-[#1D2A44]" />)}
+                    </div>
+                    <Skeleton className="h-80 rounded-xl bg-[#111A2E] border border-[#1D2A44]" />
                 </div>
             </DashboardLayout>
         );
@@ -47,175 +41,145 @@ export default function DashboardPage() {
 
     return (
         <DashboardLayout>
+            {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-white">Overview</h2>
-                    <p className="text-muted-foreground mt-1">
+                    <h2 className="text-2xl font-bold tracking-tight text-white">Overview</h2>
+                    <p className="text-[#A9B5C7] text-sm mt-1">
                         Infrastructure health at a glance.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" className="bg-card hover:bg-zinc-800 text-muted-foreground border-border hover:text-white" asChild>
-                        <Link href="/reports">
-                            <FileText className="mr-2 h-4 w-4" /> Reports
-                        </Link>
+                    <Button variant="outline" size="sm" className="bg-transparent border-[#1D2A44] text-[#A9B5C7] hover:bg-[#1D2A44] hover:text-white h-9 text-xs" asChild>
+                        <Link href="/reports"><FileText className="mr-1.5 h-3.5 w-3.5" /> All Reports</Link>
                     </Button>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 backdrop-blur-md" asChild>
-                        <Link href="/reports/new">
-                            <Activity className="mr-2 h-4 w-4" /> Run Assessment
-                        </Link>
+                    <Button size="sm" className="bg-[#2F7DFF] hover:bg-[#1E6AE1] text-white shadow-[0_0_15px_rgba(47,125,255,0.2)] h-9 text-xs" asChild>
+                        <Link href="/reports"><Zap className="mr-1.5 h-3.5 w-3.5" /> Run Assessment</Link>
                     </Button>
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Score Card */}
-                <Card className="bg-card border-border shadow-lg shadow-black/20 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ShieldCheck className="w-24 h-24 text-primary" />
+            {/* Metric Cards */}
+            <div className="grid gap-5 md:grid-cols-3">
+                {/* Infrastructure Score */}
+                <Card className="bg-[#111A2E] border-[#1D2A44] shadow-lg shadow-black/20 relative overflow-hidden group">
+                    <div className="absolute -top-4 -right-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500">
+                        <Shield className="w-32 h-32 text-[#2F7DFF]" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Infrastructure Score</CardTitle>
+                        <CardTitle className="text-[11px] font-medium text-[#A9B5C7] uppercase tracking-[0.12em]">Infrastructure Score</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-5xl font-bold tracking-tight ${latestReport ? getScoreColor(latestReport.global_score) : 'text-muted-foreground'}`}>
-                                {latestReport ? latestReport.global_score : '--'}
+                        <div className="flex items-baseline gap-3">
+                            <span className={`text-5xl font-bold tracking-tighter tabular-nums ${latest ? scoreColor(latest.global_score) : 'text-[#A9B5C7]/30'}`}>
+                                {latest ? latest.global_score : '—'}
                             </span>
-                            {latestReport && getScoreBadge(latestReport.global_score)}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1.5">
-                            {latestReport ? (
-                                <>
-                                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                                    <span>Verified {format(new Date(latestReport.created_at), 'MMM d, h:mm a')}</span>
-                                </>
-                            ) : (
-                                <span>No assessments run yet</span>
+                            {latest && (
+                                <Badge variant="outline" className={`text-[10px] ${scoreBg(latest.global_score)}`}>
+                                    {scoreLabel(latest.global_score)}
+                                </Badge>
                             )}
+                        </div>
+                        <p className="text-[11px] text-[#A9B5C7]/60 mt-4 flex items-center gap-1.5">
+                            {latest ? (
+                                <>
+                                    <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                    Assessed {format(new Date(latest.created_at), 'MMM d, h:mm a')}
+                                </>
+                            ) : 'No assessments run yet'}
                         </p>
                     </CardContent>
                 </Card>
 
-                {/* Latest Report Card */}
-                <Card className="bg-card border-border shadow-lg shadow-black/20">
+                {/* Top Findings */}
+                <Card className="bg-[#111A2E] border-[#1D2A44] shadow-lg shadow-black/20">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Latest Findings</CardTitle>
+                        <CardTitle className="text-[11px] font-medium text-[#A9B5C7] uppercase tracking-[0.12em]">Top Findings</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {latestReport ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <ShieldAlert className="h-5 w-5 text-amber-500" />
-                                        <span className="text-sm font-medium text-foreground">Security Baseline</span>
+                        {latest?.details?.findings && latest.details.findings.length > 0 ? (
+                            <div className="space-y-3">
+                                {latest.details.findings.slice(0, 3).map((f, i) => (
+                                    <div key={i} className="flex items-start gap-2.5">
+                                        <AlertTriangle className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${f.severity === 'critical' || f.severity === 'high' ? 'text-rose-400' : f.severity === 'medium' ? 'text-amber-400' : 'text-[#A9B5C7]/40'}`} />
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium text-white truncate">{f.title}</p>
+                                            <p className="text-[10px] text-[#A9B5C7]/60 truncate">{f.detail}</p>
+                                        </div>
                                     </div>
-                                    <span className="text-sm text-muted-foreground">Passed</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-emerald-500" />
-                                        <span className="text-sm font-medium text-foreground">Backup Systems</span>
-                                    </div>
-                                    <span className="text-sm text-muted-foreground">Optimal</span>
-                                </div>
-                                <div className="pt-2">
-                                    <Button variant="ghost" size="sm" className="w-full justify-between text-primary hover:text-primary/80 hover:bg-primary/10 group-hover:translate-x-1 transition-all p-0 h-auto" asChild>
-                                        <Link href={`/reports/${latestReport.id}`}>
-                                            View Full Report <ArrowRight className="ml-2 h-4 w-4" />
-                                        </Link>
-                                    </Button>
-                                </div>
+                                ))}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-6 text-center">
-                                <FileText className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                                <p className="text-sm text-muted-foreground">No reports available</p>
-                                <Button variant="link" className="text-primary" asChild>
-                                    <Link href="/reports/new">Generate one now</Link>
-                                </Button>
+                                <ShieldCheck className="h-8 w-8 text-emerald-500/20 mb-2" />
+                                <p className="text-xs text-[#A9B5C7]/50">{latest ? 'No findings detected' : 'Run an assessment first'}</p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions / Integration Status */}
-                <Card className="bg-card border-border shadow-lg shadow-black/20">
+                {/* Quick Actions */}
+                <Card className="bg-[#111A2E] border-[#1D2A44] shadow-lg shadow-black/20">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">System Status</CardTitle>
+                        <CardTitle className="text-[11px] font-medium text-[#A9B5C7] uppercase tracking-[0.12em]">Quick Actions</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 rounded-md bg-secondary/30 border border-border">
-                                <div className="flex items-center gap-3">
-                                    <Activity className="h-5 w-5 text-blue-400" />
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">API Connection</p>
-                                        <p className="text-xs text-emerald-500">Operational</p>
-                                    </div>
-                                </div>
-                                <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="outline" className="border-dashed border-border bg-transparent hover:bg-secondary/50 hover:text-white h-auto py-3 flex flex-col gap-1 items-center justify-center" asChild>
-                                    <Link href="/settings">
-                                        <span className="text-xs text-muted-foreground">Integrations</span>
-                                        <span className="text-sm font-medium">Configure</span>
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="border-dashed border-border bg-transparent hover:bg-secondary/50 hover:text-white h-auto py-3 flex flex-col gap-1 items-center justify-center" asChild>
-                                    <Link href="/reports">
-                                        <span className="text-xs text-muted-foreground">History</span>
-                                        <span className="text-sm font-medium">View All</span>
-                                    </Link>
-                                </Button>
-                            </div>
-                        </div>
+                    <CardContent className="space-y-2">
+                        <Button variant="outline" className="w-full justify-start h-10 text-xs bg-transparent border-[#1D2A44] text-[#A9B5C7] hover:bg-[#1D2A44] hover:text-white" asChild>
+                            <Link href="/reports"><TrendingUp className="mr-2 h-3.5 w-3.5 text-[#2F7DFF]" /> Generate Snapshot</Link>
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-10 text-xs bg-transparent border-[#1D2A44] text-[#A9B5C7] hover:bg-[#1D2A44] hover:text-white" asChild>
+                            <Link href="/settings"><Activity className="mr-2 h-3.5 w-3.5 text-emerald-400" /> Configure Integrations</Link>
+                        </Button>
+                        {user?.role === 'admin' && (
+                            <Button variant="outline" className="w-full justify-start h-10 text-xs bg-transparent border-[#1D2A44] text-[#A9B5C7] hover:bg-[#1D2A44] hover:text-white" asChild>
+                                <Link href="/tenants"><Shield className="mr-2 h-3.5 w-3.5 text-amber-400" /> Manage Tenants</Link>
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
             </div>
 
             {/* Recent Reports Table */}
-            <Card className="bg-card border-border shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-lg font-medium text-white">Recent Assessments</CardTitle>
-                        <CardDescription className="text-muted-foreground">
-                            History of infrastructure snapshots and compliance checks.
-                        </CardDescription>
+            <Card className="bg-[#111A2E] border-[#1D2A44] shadow-lg shadow-black/20">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-medium text-white">Recent Assessments</CardTitle>
+                            <CardDescription className="text-xs text-[#A9B5C7]/60">Snapshot and compliance history</CardDescription>
+                        </div>
+                        {sorted.length > 0 && (
+                            <Button variant="ghost" size="sm" className="text-[#2F7DFF] hover:text-[#2F7DFF] hover:bg-[#2F7DFF]/10 text-xs" asChild>
+                                <Link href="/reports">View all <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                            </Button>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {sortedReports.length > 0 ? (
-                        <div className="rounded-md border border-border overflow-hidden">
-                            <table className="w-full caption-bottom text-sm text-left">
-                                <thead className="bg-[#111A2E] [&_tr]:border-b [&_tr]:border-[#1D2A44]">
-                                    <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                                        <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Report Type</th>
-                                        <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Date</th>
-                                        <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Score</th>
-                                        <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Action</th>
+                    {sorted.length > 0 ? (
+                        <div className="rounded-lg border border-[#1D2A44] overflow-hidden">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-[#0A0F1C]/50">
+                                        <th className="h-9 px-4 text-left font-medium text-[#A9B5C7]/60 uppercase tracking-wider text-[10px]">Type</th>
+                                        <th className="h-9 px-4 text-left font-medium text-[#A9B5C7]/60 uppercase tracking-wider text-[10px]">Date</th>
+                                        <th className="h-9 px-4 text-left font-medium text-[#A9B5C7]/60 uppercase tracking-wider text-[10px]">Score</th>
+                                        <th className="h-9 px-4 text-right font-medium text-[#A9B5C7]/60 uppercase tracking-wider text-[10px]">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="[&_tr:last-child]:border-0">
-                                    {sortedReports.slice(0, 5).map((report) => (
-                                        <tr key={report.id} className="border-b border-[#1D2A44] transition-colors hover:bg-[#1D2A44]/30">
-                                            <td className="p-4 align-middle font-medium text-white capitalize flex items-center gap-2">
-                                                <div className="p-1.5 rounded bg-blue-500/10 text-blue-400">
-                                                    {report.report_type === 'snapshot' ? <Activity className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                                <tbody>
+                                    {sorted.slice(0, 5).map((r) => (
+                                        <tr key={r.id} className="border-t border-[#1D2A44]/50 hover:bg-[#1D2A44]/20 transition-colors">
+                                            <td className="p-4 text-white font-medium capitalize flex items-center gap-2">
+                                                <div className="p-1 rounded bg-[#2F7DFF]/10">
+                                                    <Activity className="h-3 w-3 text-[#2F7DFF]" />
                                                 </div>
-                                                {report.report_type}
+                                                {r.report_type}
                                             </td>
-                                            <td className="p-4 align-middle text-muted-foreground">
-                                                {format(new Date(report.created_at), 'MMM d, yyyy')}
-                                            </td>
-                                            <td className="p-4 align-middle">
-                                                <span className={`font-bold ${getScoreColor(report.global_score)}`}>{report.global_score}</span>
-                                            </td>
-                                            <td className="p-4 align-middle text-right">
-                                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white hover:bg-secondary" asChild>
-                                                    <Link href={`/reports/${report.id}`}>View</Link>
+                                            <td className="p-4 text-[#A9B5C7]">{format(new Date(r.created_at), 'MMM d, yyyy')}</td>
+                                            <td className="p-4"><span className={`font-bold tabular-nums ${scoreColor(r.global_score)}`}>{r.global_score}</span></td>
+                                            <td className="p-4 text-right">
+                                                <Button variant="ghost" size="sm" className="text-[#A9B5C7] hover:text-white hover:bg-[#1D2A44] h-7 text-[11px] px-2">
+                                                    View
                                                 </Button>
                                             </td>
                                         </tr>
@@ -224,11 +188,13 @@ export default function DashboardPage() {
                             </table>
                         </div>
                     ) : (
-                        <div className="text-center py-12 text-muted-foreground">
-                            <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/20 mb-3" />
-                            <p>No reports generated yet.</p>
-                            <Button variant="outline" className="mt-4" asChild>
-                                <Link href="/reports/new">Run first assessment</Link>
+                        <div className="text-center py-16">
+                            <div className="mx-auto h-12 w-12 rounded-full bg-[#1D2A44] flex items-center justify-center mb-4">
+                                <TrendingUp className="h-5 w-5 text-[#A9B5C7]/30" />
+                            </div>
+                            <p className="text-sm text-[#A9B5C7]/60 mb-4">No reports yet. Run your first assessment.</p>
+                            <Button className="bg-[#2F7DFF] hover:bg-[#1E6AE1] text-white text-xs shadow-[0_0_15px_rgba(47,125,255,0.2)]" asChild>
+                                <Link href="/reports">Generate First Report</Link>
                             </Button>
                         </div>
                     )}

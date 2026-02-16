@@ -5,25 +5,23 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Shield } from 'lucide-react';
 
-export default function Home() {
+export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
-      if (user) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
+      router.replace(user ? '/dashboard' : '/login');
     }
   }, [user, loading, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
-      <div className="flex flex-col items-center gap-4 animate-pulse">
-        <Shield className="h-12 w-12 text-[#0B1F3B]" />
-        <h1 className="text-xl font-semibold text-[#0B1F3B]">FortiStack</h1>
+    <div className="flex h-screen items-center justify-center bg-[#0B1220]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="rounded-2xl bg-[#111A2E] p-4 shadow-lg ring-1 ring-[#1D2A44] animate-pulse">
+          <Shield className="h-8 w-8 text-[#2F7DFF]" />
+        </div>
+        <p className="text-xs text-[#A9B5C7]/40 font-medium tracking-wider uppercase">Loading</p>
       </div>
     </div>
   );

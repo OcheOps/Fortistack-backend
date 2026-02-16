@@ -3,7 +3,7 @@ export type ApiEnvelope<T> = {
     error?: {
         code: string;
         message: string;
-        details?: any;
+        details?: unknown;
     } | null;
 };
 
@@ -23,6 +23,17 @@ export type User = {
     tenant_id: string;
     role: 'admin' | 'tenant_admin' | 'viewer';
     exp?: number;
+};
+
+// JWT Claims (what's actually in the token)
+export type JWTClaims = {
+    sub?: string;
+    user_id?: string;
+    tenant_id?: string;
+    role?: string;
+    exp?: number;
+    iat?: number;
+    iss?: string;
 };
 
 // Reports

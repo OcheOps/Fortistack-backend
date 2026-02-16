@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { LoginResponse, User } from '@/lib/types';
+import { LoginResponse, User, JWTClaims } from '@/lib/types';
 import { jwtDecode } from 'jwt-decode';
 
 interface AuthContextType {
@@ -15,21 +15,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// Helper to decode token safely
+/** Decode JWT claims into a User object safely */
 const decodeUser = (token: string): User | null => {
     try {
-        const decoded: any = jwtDecode(token);
+        const claims = jwtDecode<JWTClaims>(token);
+        const userId = claims.sub || claims.user_id;
+        if (!userId) return null;
+
         return {
-            user_id: decoded.sub || decoded.user_id,
-            tenant_id: decoded.tenant_id,
-            role: decoded.role || 'viewer', // default fallback
-            exp: decoded.exp
+            user_id: userId,
+            tenant_id: claims.tenant_id || '',
+            role: (claims.role as User['role']) || 'viewer',
+            exp: claims.exp,
         };
-    } catch (e) {
+    } catch (e: unknown) {
         console.error('Failed to decode token', e);
         return null;
     }
-}
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -37,19 +40,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        const initAuth = async () => {
+        const initAuth = () => {
             const token = localStorage.getItem('access_token');
             if (token) {
-                const user = decodeUser(token);
-                if (user) {
+                const decoded = decodeUser(token);
+                if (decoded) {
                     // Check expiration
-                    if (user.exp && user.exp * 1000 < Date.now()) {
-                        // Token expired, could try refresh or just logout
+                    if (decoded.exp && decoded.exp * 1000 < Date.now()) {
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('refresh_token');
                         setUser(null);
                     } else {
-                        setUser(user);
+                        setUser(decoded);
                     }
                 } else {
                     localStorage.removeItem('access_token');
@@ -61,23 +63,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const login = async (email: string, pass: string) => {
-        try {
-            // api.post throws error if failed
-            const data = await api.post<LoginResponse>('/auth/login', { email, password: pass });
+        // api.post unwraps the envelope: { data: { access_token, refresh_token } } -> { access_token, refresh_token }
+        const data = await api.post<LoginResponse>('/auth/login', { email, password: pass });
 
-            const { access_token, refresh_token } = data;
+        const { access_token, refresh_token } = data;
 
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
 
-            const decodedUser = decodeUser(access_token);
-            setUser(decodedUser);
+        const decodedUser = decodeUser(access_token);
+        setUser(decodedUser);
 
-            router.push('/dashboard');
-        } catch (err) {
-            console.error('Login failed', err);
-            throw err;
-        }
+        router.push('/dashboard');
     };
 
     const logout = () => {

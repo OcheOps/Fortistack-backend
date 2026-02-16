@@ -1,74 +1,74 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    /* FortiStack Premium Theme */
+@theme {
+  /* FortiStack Premium Dark Theme */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-    /* Dark Mode First (Default) */
-    --background: 220 48% 8%;
-    /* #0B1220 */
-    --foreground: 216 33% 94%;
-    /* #E6EEF8 */
+  --color-background: #0B1220;
+  --color-foreground: #E6EEF8;
 
-    --card: 221 44% 12%;
-    /* #111A2E */
-    --card-foreground: 216 33% 94%;
-    /* #E6EEF8 */
+  --color-card: #111A2E;
+  --color-card-foreground: #E6EEF8;
 
-    --popover: 221 44% 12%;
-    /* #111A2E */
-    --popover-foreground: 216 33% 94%;
-    /* #E6EEF8 */
+  --color-popover: #111A2E;
+  --color-popover-foreground: #E6EEF8;
 
-    --primary: 217 100% 59%;
-    /* #2F7DFF */
-    --primary-foreground: 210 40% 98%;
+  --color-primary: #2F7DFF;
+  --color-primary-foreground: #F0F6FF;
 
-    --secondary: 220 40% 19%;
-    /* #1D2A44 (using as border/secondary bg) */
-    --secondary-foreground: 210 40% 98%;
+  --color-secondary: #1D2A44;
+  --color-secondary-foreground: #F0F6FF;
 
-    --muted: 220 40% 19%;
-    --muted-foreground: 216 20% 72%;
-    /* #A9B5C7 */
+  --color-muted: #1D2A44;
+  --color-muted-foreground: #A9B5C7;
 
-    --accent: 217 100% 59%;
-    --accent-foreground: 210 40% 98%;
+  --color-accent: #2F7DFF;
+  --color-accent-foreground: #F0F6FF;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #F0F6FF;
 
-    --border: 220 40% 19%;
-    /* #1D2A44 */
-    --input: 220 40% 19%;
-    --ring: 224 76% 48%;
+  --color-border: #1D2A44;
+  --color-input: #1D2A44;
+  --color-ring: #2F7DFF;
 
-    --radius: 0.5rem;
+  --radius: 0.5rem;
 
-    /* Chart Colors */
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-
-  /* Light mode override (optional, but requested dark-first) */
-  .light {
-    /* Mapping back to requested dark colors for consistency if needed, or proper light mode */
-    /* For now, sticking to the requested dark theme as primary */
-  }
+  /* Chart Colors */
+  --color-chart-1: #2F7DFF;
+  --color-chart-2: #26C281;
+  --color-chart-3: #F59E0B;
+  --color-chart-4: #8B5CF6;
+  --color-chart-5: #EC4899;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+* {
+  border-color: var(--color-border);
+}
 
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar theming */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1D2A44;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2F7DFF;
 }

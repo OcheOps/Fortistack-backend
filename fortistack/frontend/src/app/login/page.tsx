@@ -20,14 +20,13 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const formSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
+    email: z.string().email('Enter a valid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 export default function LoginPage() {
     const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const {
         register,
@@ -43,13 +42,12 @@ export default function LoginPage() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setIsLoading(true);
-        setError('');
         try {
             await login(values.email, values.password);
-            // toast.success('Welcome back!'); // Sonner toast if available
-        } catch (e: any) {
-            console.error(e);
-            setError(e.message || 'Invalid credentials');
+            toast.success('Welcome back!');
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Invalid credentials';
+            toast.error('Login failed', { description: message });
         } finally {
             setIsLoading(false);
         }
@@ -57,64 +55,66 @@ export default function LoginPage() {
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-[#0B1220] px-4 py-12 sm:px-6 lg:px-8">
-            <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-500">
+            {/* Subtle grid pattern overlay */}
+            <div className="absolute inset-0 opacity-[0.02]" style={{
+                backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+                backgroundSize: '40px 40px'
+            }} />
+
+            <div className="relative w-full max-w-md space-y-8">
                 <div className="flex flex-col items-center justify-center text-center">
-                    <div className="rounded-full bg-[#1D2A44] p-4 text-[#2F7DFF] shadow-lg shadow-[#2F7DFF]/20 ring-1 ring-[#1D2A44]">
+                    <div className="rounded-2xl bg-[#111A2E] p-4 text-[#2F7DFF] shadow-lg shadow-[#2F7DFF]/10 ring-1 ring-[#1D2A44] mb-6">
                         <ShieldCheck className="h-10 w-10" />
                     </div>
                 </div>
 
-                <Card className="border-[#1D2A44] bg-[#111A2E]/80 backdrop-blur-sm shadow-2xl">
-                    <CardHeader className="space-y-1">
+                <Card className="border-[#1D2A44] bg-[#111A2E]/80 backdrop-blur-md shadow-2xl shadow-black/30">
+                    <CardHeader className="space-y-1 pb-4">
                         <CardTitle className="text-2xl font-bold tracking-tight text-white text-center">
                             FortiStack
                         </CardTitle>
-                        <CardDescription className="text-center text-[#A9B5C7]">
-                            Infrastructure Assurance Platform
+                        <CardDescription className="text-center text-[#A9B5C7] text-sm">
+                            Sign in to your infrastructure assurance dashboard
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-[#E6EEF8]">Email</Label>
+                                <Label htmlFor="email" className="text-[#A9B5C7] text-xs font-medium uppercase tracking-wider">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="admin@fortistack.local"
+                                    autoComplete="email"
                                     {...register('email')}
-                                    className="bg-[#0B1220] border-[#1D2A44] text-white placeholder:text-[#A9B5C7]/50 focus-visible:ring-[#2F7DFF]"
+                                    className="h-11 bg-[#0B1220] border-[#1D2A44] text-white placeholder:text-[#A9B5C7]/40 focus-visible:ring-[#2F7DFF] focus-visible:border-[#2F7DFF]/50 transition-colors"
                                 />
                                 {errors.email && (
-                                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                                    <p className="text-xs text-red-400">{errors.email.message}</p>
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-[#E6EEF8]">Password</Label>
+                                <Label htmlFor="password" className="text-[#A9B5C7] text-xs font-medium uppercase tracking-wider">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
+                                    autoComplete="current-password"
                                     {...register('password')}
-                                    className="bg-[#0B1220] border-[#1D2A44] text-white focus-visible:ring-[#2F7DFF]"
+                                    className="h-11 bg-[#0B1220] border-[#1D2A44] text-white focus-visible:ring-[#2F7DFF] focus-visible:border-[#2F7DFF]/50 transition-colors"
                                 />
                                 {errors.password && (
-                                    <p className="text-xs text-destructive">{errors.password.message}</p>
+                                    <p className="text-xs text-red-400">{errors.password.message}</p>
                                 )}
                             </div>
 
-                            {error && (
-                                <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
-                                    {error}
-                                </div>
-                            )}
-
                             <Button
                                 type="submit"
-                                className="w-full bg-[#2F7DFF] hover:bg-[#2F7DFF]/90 text-white font-medium shadow-[0_0_15px_rgba(47,125,255,0.3)]"
+                                className="w-full h-11 bg-[#2F7DFF] hover:bg-[#1E6AE1] text-white font-medium shadow-[0_0_20px_rgba(47,125,255,0.25)] hover:shadow-[0_0_25px_rgba(47,125,255,0.35)] transition-all duration-200"
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…
                                     </>
                                 ) : (
                                     'Sign in'
@@ -122,8 +122,8 @@ export default function LoginPage() {
                             </Button>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex justify-center border-t border-[#1D2A44] p-4 bg-[#0B1220]/30">
-                        <p className="text-xs text-[#A9B5C7]">
+                    <CardFooter className="flex justify-center border-t border-[#1D2A44] p-4 bg-[#0B1220]/30 rounded-b-lg">
+                        <p className="text-xs text-[#A9B5C7]/60">
                             Protected by FortiStack Security
                         </p>
                     </CardFooter>

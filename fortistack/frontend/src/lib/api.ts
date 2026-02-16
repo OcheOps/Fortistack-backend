@@ -2,11 +2,11 @@ import { ApiEnvelope } from './types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
-class ApiError extends Error {
+export class ApiError extends Error {
     code: string;
-    details?: any;
+    details?: unknown;
 
-    constructor(message: string, code: string = 'UNKNOWN_ERROR', details?: any) {
+    constructor(message: string, code: string = 'UNKNOWN_ERROR', details?: unknown) {
         super(message);
         this.name = 'ApiError';
         this.code = code;
@@ -35,7 +35,6 @@ class ApiClient {
 
             // Handle 401 Unauthorized (Attempt Refresh or Logout)
             if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/refresh')) {
-                // Prevent infinite loop if refresh itself fails
                 const refreshed = await this.refreshToken();
                 if (refreshed) {
                     const newToken = localStorage.getItem('access_token');
@@ -52,36 +51,36 @@ class ApiClient {
                 }
             }
 
-            let data: ApiEnvelope<T> | null = null;
+            let envelope: ApiEnvelope<T> | null = null;
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
+                envelope = await response.json();
             }
 
             if (!response.ok) {
-                if (data?.error) {
-                    throw new ApiError(data.error.message, data.error.code, data.error.details);
+                if (envelope?.error) {
+                    throw new ApiError(envelope.error.message, envelope.error.code, envelope.error.details);
                 }
                 throw new ApiError(`Request failed with status ${response.status}`, 'HTTP_ERROR');
             }
 
-            // Unwrap data
-            if (data && data.data !== undefined) {
-                return data.data;
+            // Unwrap the envelope's data field
+            if (envelope && envelope.data !== undefined) {
+                return envelope.data;
             }
 
-            // Some endpoints might return empty body or just { success: true } without data wrapper if not enveloped?
-            // But per contract, we expect envelope. If data is missing but no error, return as is or casting?
-            // Safest to return data as T if it exists, otherwise return the whole object if T allows it, or null.
-            return (data as unknown) as T;
+            // If no data field but response was OK (e.g. null data), return null cast
+            return null as T;
 
-        } catch (error) {
+        } catch (error: unknown) {
             if (error instanceof ApiError) {
                 throw error;
             }
-            // Network errors, etc.
             console.error(`API Request Failed: ${endpoint}`, error);
-            throw new ApiError(error instanceof Error ? error.message : 'Unknown network error', 'NETWORK_ERROR');
+            throw new ApiError(
+                error instanceof Error ? error.message : 'Unknown network error',
+                'NETWORK_ERROR'
+            );
         }
     }
 
@@ -97,13 +96,13 @@ class ApiClient {
             });
 
             if (response.ok) {
-                const json = await response.json();
+                const json: ApiEnvelope<{ access_token: string }> = await response.json();
                 if (json.data?.access_token) {
                     localStorage.setItem('access_token', json.data.access_token);
                     return true;
                 }
             }
-        } catch (e) {
+        } catch (e: unknown) {
             console.error('Token refresh failed', e);
         }
         return false;
@@ -117,33 +116,33 @@ class ApiClient {
         }
     }
 
-    // Public methods
-    get<T>(endpoint: string) {
+    // Public methods — strongly typed, no `any`
+    get<T>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: 'GET' });
     }
 
-    post<T>(endpoint: string, body?: any) {
+    post<T>(endpoint: string, body?: Record<string, unknown>): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'POST',
             body: body ? JSON.stringify(body) : undefined,
         });
     }
 
-    put<T>(endpoint: string, body?: any) {
+    put<T>(endpoint: string, body?: Record<string, unknown>): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'PUT',
             body: body ? JSON.stringify(body) : undefined,
         });
     }
 
-    patch<T>(endpoint: string, body?: any) {
+    patch<T>(endpoint: string, body?: Record<string, unknown>): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'PATCH',
             body: body ? JSON.stringify(body) : undefined,
         });
     }
 
-    delete<T>(endpoint: string) {
+    delete<T>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: 'DELETE' });
     }
 }

@@ -7,29 +7,24 @@ import { type Tenant, type AlertConfig, type Report, type RiskInput } from '@/li
 export function useTenants() {
     return useQuery<Tenant[]>({
         queryKey: ['tenants'],
-        queryFn: async () => {
-            return await api.get<Tenant[]>('/tenants');
-        }
+        queryFn: () => api.get<Tenant[]>('/tenants'),
     });
 }
 
 export function useTenant(id: string) {
     return useQuery<Tenant>({
         queryKey: ['tenants', id],
-        queryFn: async () => {
-            return await api.get<Tenant>(`/tenants/${id}`);
-        },
-        enabled: !!id
+        queryFn: () => api.get<Tenant>(`/tenants/${id}`),
+        enabled: !!id,
     });
 }
 
 export function useCreateTenant() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (input: Partial<Tenant>) => {
-            return await api.post<Tenant>('/tenants', input);
-        },
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] })
+        mutationFn: (input: Partial<Tenant>) =>
+            api.post<Tenant>('/tenants', input as Record<string, unknown>),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] }),
     });
 }
 
@@ -38,22 +33,17 @@ export function useCreateTenant() {
 export function useReports(tenantId: string) {
     return useQuery<Report[]>({
         queryKey: ['reports', tenantId],
-        queryFn: async () => {
-            // The API likely returns a list of reports. 
-            // If the backend returns { data: [...] }, api.get unwraps it to [...]
-            return await api.get<Report[]>(`/tenants/${tenantId}/reports`);
-        },
-        enabled: !!tenantId
+        queryFn: () => api.get<Report[]>(`/tenants/${tenantId}/reports`),
+        enabled: !!tenantId,
     });
 }
 
 export function useGenerateSnapshot() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({ tenantId, input }: { tenantId: string; input: RiskInput }) => {
-            return await api.post<Report>(`/tenants/${tenantId}/reports/snapshot`, input);
-        },
-        onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['reports', vars.tenantId] })
+        mutationFn: ({ tenantId, input }: { tenantId: string; input: RiskInput }) =>
+            api.post<Report>(`/tenants/${tenantId}/reports/snapshot`, input as unknown as Record<string, unknown>),
+        onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['reports', vars.tenantId] }),
     });
 }
 
@@ -61,11 +51,10 @@ export function useDownloadReport() {
     return useMutation({
         mutationFn: async (reportId: string) => {
             const token = localStorage.getItem('access_token');
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-            const url = `${baseUrl.replace(/\/$/, '')}/reports/${reportId}/download`;
+            const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 
-            const res = await fetch(url, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            const res = await fetch(`${baseUrl}/reports/${reportId}/download`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
 
             if (!res.ok) throw new Error('Download failed');
@@ -79,7 +68,7 @@ export function useDownloadReport() {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(downloadUrl);
-        }
+        },
     });
 }
 
@@ -91,23 +80,22 @@ export function useAlertConfig(tenantId: string) {
         queryFn: async () => {
             try {
                 return await api.get<AlertConfig>(`/tenants/${tenantId}/alert-config`);
-            } catch (error: any) {
-                // Return null if not found or error, let UI handle empty state
+            } catch (error: unknown) {
+                // Return null on 404 or error — let UI handle empty state
                 console.warn('Failed to fetch alert config', error);
                 return null;
             }
         },
         enabled: !!tenantId,
-        retry: false
+        retry: false,
     });
 }
 
 export function useUpdateAlertConfig() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({ tenantId, config }: { tenantId: string; config: Partial<AlertConfig> }) => {
-            return await api.put<AlertConfig>(`/tenants/${tenantId}/alert-config`, config);
-        },
-        onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['alert-config', vars.tenantId] })
+        mutationFn: ({ tenantId, config }: { tenantId: string; config: Partial<AlertConfig> }) =>
+            api.put<AlertConfig>(`/tenants/${tenantId}/alert-config`, config as Record<string, unknown>),
+        onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['alert-config', vars.tenantId] }),
     });
 }
