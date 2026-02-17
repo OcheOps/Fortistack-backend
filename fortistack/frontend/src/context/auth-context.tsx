@@ -9,6 +9,8 @@ import { jwtDecode } from 'jwt-decode';
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    activeTenant: string | null;
+    setActiveTenant: (tenantId: string) => void;
     login: (email: string, pass: string) => Promise<void>;
     logout: () => void;
 }
@@ -37,7 +39,16 @@ const decodeUser = (token: string): User | null => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [activeTenant, setActiveTenantState] = useState<string | null>(null);
     const router = useRouter();
+
+    // Helper to sync active tenant
+    const setActiveTenant = (tenantId: string) => {
+        setActiveTenantState(tenantId);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('active_tenant_id', tenantId);
+        }
+    };
 
     useEffect(() => {
         const initAuth = () => {
@@ -49,9 +60,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     if (decoded.exp && decoded.exp * 1000 < Date.now()) {
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('refresh_token');
+                        localStorage.removeItem('active_tenant_id');
                         setUser(null);
                     } else {
                         setUser(decoded);
+                        // Restore active tenant or default to user's tenant
+                        const storedTenant = localStorage.getItem('active_tenant_id');
+                        if (decoded.role === 'admin' && storedTenant) {
+                            setActiveTenantState(storedTenant);
+                        } else {
+                            setActiveTenantState(decoded.tenant_id);
+                        }
                     }
                 } else {
                     localStorage.removeItem('access_token');
@@ -74,18 +93,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const decodedUser = decodeUser(access_token);
         setUser(decodedUser);
 
+        if (decodedUser) {
+            // Default active tenant
+            const defaultTenant = decodedUser.tenant_id;
+            setActiveTenantState(defaultTenant);
+            localStorage.setItem('active_tenant_id', defaultTenant);
+        }
+
         router.push('/dashboard');
     };
 
     const logout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('active_tenant_id');
         setUser(null);
+        setActiveTenantState(null);
         router.push('/login');
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, activeTenant, setActiveTenant, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

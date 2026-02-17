@@ -1,6 +1,10 @@
 import { ApiEnvelope } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Detect if we are on the server (Docker container) or client (Browser)
+const isServer = typeof window === 'undefined';
+const BASE_URL = isServer
+    ? (process.env.API_BASE_URL_INTERNAL || 'http://api:8080')
+    : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080');
 
 export class ApiError extends Error {
     code: string;

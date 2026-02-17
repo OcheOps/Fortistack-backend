@@ -1,0 +1,503 @@
+{
+    "_type": "export",
+    "__export_format": 4,
+    "__export_date": "2026-02-17T12:00:00.000Z",
+    "__export_source": "insomnia.desktop.app:v8.0.0",
+    "resources": [
+        {
+            "_id": "wrk_1",
+            "parentId": null,
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "FortiStack API",
+            "description": "API Documentation for FortiStack Backend",
+            "scope": "collection",
+            "_type": "workspace"
+        },
+        {
+            "_id": "env_base",
+            "parentId": "wrk_1",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "Base Environment",
+            "data": {
+                "base_url": "http://localhost:8080",
+                "access_token": "YOUR_ACCESS_TOKEN",
+                "refresh_token": "YOUR_REFRESH_TOKEN",
+                "tenant_id": "YOUR_TENANT_UUID",
+                "admin_token": "YOUR_ADMIN_TOKEN",
+                "report_id": "YOUR_REPORT_ID"
+            },
+            "dataPropertyOrder": {
+                "&": [
+                    "base_url",
+                    "access_token",
+                    "refresh_token",
+                    "tenant_id",
+                    "admin_token",
+                    "report_id"
+                ]
+            },
+            "color": null,
+            "isPrivate": false,
+            "metaSortKey": 1700000000000,
+            "_type": "environment"
+        },
+        {
+            "_id": "fld_health",
+            "parentId": "wrk_1",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "Health Checks",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -100,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_healthz",
+            "parentId": "fld_health",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/healthz",
+            "name": "Check Service Liveness",
+            "description": "Checks if the service is running.",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -200,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_readyz",
+            "parentId": "fld_health",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/readyz",
+            "name": "Check Service Readiness",
+            "description": "Checks if the service is ready (DB connectivity).",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -100,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_auth",
+            "parentId": "wrk_1",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "Authentication",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -90,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_register",
+            "parentId": "fld_auth",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/auth/register",
+            "name": "Register Tenant Admin",
+            "description": "Admin Only - Register a new tenant admin.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"email\": \"tenant@example.com\",\n\t\"password\": \"password123\",\n\t\"role\": \"tenant_admin\",\n\t\"tenant_id\": \"{{ tenant_id }}\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ admin_token }}"
+            },
+            "metaSortKey": -100,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_login",
+            "parentId": "fld_auth",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/auth/login",
+            "name": "Login",
+            "description": "Authenticate using email and password.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"email\": \"admin@fortistack.local\",\n\t\"password\": \"password123\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -90,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_refresh",
+            "parentId": "fld_auth",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/auth/refresh",
+            "name": "Refresh Token",
+            "description": "Get a new access token using a refresh token.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"refresh_token\": \"{{ refresh_token }}\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -80,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_logout",
+            "parentId": "fld_auth",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/auth/logout",
+            "name": "Logout",
+            "description": "Invalidate the current session.",
+            "method": "POST",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -70,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_tenants",
+            "parentId": "wrk_1",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "Tenants",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -80,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_create_tenant",
+            "parentId": "fld_tenants",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants",
+            "name": "Create Tenant",
+            "description": "Admin Only - Create a new tenant.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"name\": \"Acme Fintech\",\n\t\"region\": \"us-east-1\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ admin_token }}"
+            },
+            "metaSortKey": -100,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_list_tenants",
+            "parentId": "fld_tenants",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants",
+            "name": "List Tenants",
+            "description": "Admin Only - List all tenants.",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ admin_token }}"
+            },
+            "metaSortKey": -90,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_get_tenant",
+            "parentId": "fld_tenants",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants/{{ tenant_id }}",
+            "name": "Get Tenant Details",
+            "description": "Get details for a specific tenant.",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -80,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_update_alert",
+            "parentId": "fld_tenants",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants/{{ tenant_id }}/alert-config",
+            "name": "Update Alert Config",
+            "description": "Update alert configuration (webhooks, emails).",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"slack_webhook_url\": \"https://hooks.slack.com/services/...\",\n\t\"teams_webhook_url\": \"https://outlook.office.com/webhook/...\",\n\t\"email_recipients\": [\"ops@acme.com\", \"cto@acme.com\"]\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -70,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_reports",
+            "parentId": "wrk_1",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "name": "Reports",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -70,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_snapshot",
+            "parentId": "fld_reports",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants/{{ tenant_id }}/reports/snapshot",
+            "name": "Generate Snapshot Report",
+            "description": "Triggers an immediate risk assessment.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"UptimeMetric\": 99.95,\n\t\"LastBackupAgeDays\": 0,\n\t\"OpenPortsCount\": 2,\n\t\"PublicExposureFound\": false,\n\t\"LoggingEnabled\": true,\n\t\"AccessReviewRecent\": true,\n\t\"MonthlySpendSpikePercent\": 5.0\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -100,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_monthly",
+            "parentId": "fld_reports",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants/{{ tenant_id }}/reports/monthly",
+            "name": "Generate Monthly Report",
+            "description": "Generates a historical report.",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"start\": \"2023-10-01T00:00:00Z\",\n\t\"end\": \"2023-10-31T23:59:59Z\",\n\t\"input\": {\n\t\t\"UptimeMetric\": 99.9,\n\t\t\"LastBackupAgeDays\": 1,\n\t\t\"OpenPortsCount\": 5,\n\t\t\"PublicExposureFound\": false,\n\t\t\"LoggingEnabled\": true,\n\t\t\"AccessReviewRecent\": false,\n\t\t\"MonthlySpendSpikePercent\": 12.0\n\t}\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -90,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_list_reports",
+            "parentId": "fld_reports",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/tenants/{{ tenant_id }}/reports",
+            "name": "List Reports",
+            "description": "List all reports for a tenant.",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -80,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_download_report",
+            "parentId": "fld_reports",
+            "modified": 1700000000000,
+            "created": 1700000000000,
+            "url": "{{ base_url }}/reports/{{ report_id }}/download",
+            "name": "Download Report (PDF)",
+            "description": "Download report as PDF.",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {
+                "type": "bearer",
+                "token": "{{ access_token }}"
+            },
+            "metaSortKey": -70,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        }
+    ]
+}

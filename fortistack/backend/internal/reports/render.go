@@ -4,16 +4,20 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"os"
+	"path/filepath"
 )
 
 const (
 	TemplateDir = "templates/"
+	AssetDir    = "assets/"
 )
 
-type Renderer struct {
-	// Cache templates if needed, but for simplicity we parse per request to allow hot reloading during dev?
-	// Given strict "production-ready", caching is better.
-	// But let's keep it simple and robust.
+type Renderer struct{}
+
+type ReportData struct {
+	*Report
+	Styles template.HTML
 }
 
 func Render(report *Report) (string, error) {
@@ -27,6 +31,21 @@ func Render(report *Report) (string, error) {
 		return "", fmt.Errorf("unknown report type: %s", report.ReportType)
 	}
 
+	// Read CSS
+	cssBytes, err := os.ReadFile(filepath.Join(AssetDir, "report.css"))
+	if err != nil {
+		// Fallback to empty logging or error?
+		// For now log and continue or fail? Fail is better to catch issues.
+		// Try absolute path if relative fails (e.g. in test vs docker)
+		if os.IsNotExist(err) {
+			// Try /app/assets/report.css
+			cssBytes, err = os.ReadFile("/app/assets/report.css")
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to load css: %w", err)
+		}
+	}
+
 	// Parse main template and all partials
 	t, err := template.ParseGlob(TemplateDir + "partials/*.html")
 	if err != nil {
@@ -38,10 +57,13 @@ func Render(report *Report) (string, error) {
 		return "", fmt.Errorf("failed to parse main template %s: %w", mainTemplate, err)
 	}
 
+	data := ReportData{
+		Report: report,
+		Styles: template.HTML(fmt.Sprintf("<style>%s</style>", cssBytes)),
+	}
+
 	var buf bytes.Buffer
-	// Execute the template matching the main file name (e.g. "snapshot.html")
-	// Note: template.ParseFiles uses the base name of the file as the template name.
-	if err := t.ExecuteTemplate(&buf, mainTemplate, report); err != nil {
+	if err := t.ExecuteTemplate(&buf, mainTemplate, data); err != nil {
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
