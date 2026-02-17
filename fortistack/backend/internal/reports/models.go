@@ -20,7 +20,7 @@ type Report struct {
 	ReportPeriodStart *time.Time `json:"report_period_start,omitempty"`
 	ReportPeriodEnd   *time.Time `json:"report_period_end,omitempty"`
 	GlobalScore       int        `json:"global_score"`
-	StoragePath       string     `json:"storage_path"`
+	StorageKey        string     `json:"storage_key"`
 	CreatedAt         time.Time  `json:"created_at"`
 
 	// Enriched data not stored in DB

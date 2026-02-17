@@ -8,8 +8,9 @@ import (
 	"fortistack/internal/auth"
 	"fortistack/internal/reports"
 	"fortistack/internal/risk"
+	"fortistack/internal/storage"
+	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,10 +18,11 @@ import (
 
 type ReportHandler struct {
 	Service *reports.Service
+	Store   storage.ObjectStore
 }
 
-func NewReportHandler(s *reports.Service) *ReportHandler {
-	return &ReportHandler{Service: s}
+func NewReportHandler(s *reports.Service, store storage.ObjectStore) *ReportHandler {
+	return &ReportHandler{Service: s, Store: store}
 }
 
 func (h *ReportHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +58,6 @@ func (h *ReportHandler) CreateMonthly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For monthly, we need period start/end and input
 	var request struct {
 		Start time.Time  `json:"start"`
 		End   time.Time  `json:"end"`
@@ -81,7 +82,6 @@ func (h *ReportHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "id")
 
 	user := middleware.GetUser(r.Context())
-	// Viewer role allowed
 	if err := auth.CheckPermission(user, tenantID, auth.RoleViewer); err != nil {
 		responses.ErrorJSON(w, http.StatusForbidden, err)
 		return
@@ -99,9 +99,7 @@ func (h *ReportHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *ReportHandler) Download(w http.ResponseWriter, r *http.Request) {
 	reportID := chi.URLParam(r, "id")
 
-	// Need to check auth. But report ID doesn't tell us tenant ID easily unless we fetch it first.
-	// Service.GetReport fetches report which has TenantID.
-
+	// Fetch report to get tenant_id and storage_key
 	report, err := h.Service.GetReport(r.Context(), reportID)
 	if err != nil {
 		responses.ErrorJSON(w, http.StatusInternalServerError, err)
@@ -119,21 +117,26 @@ func (h *ReportHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get file path
-	path := report.StoragePath
-
-	// Verify file exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		responses.ErrorJSON(w, http.StatusNotFound, fmt.Errorf("report file not found on disk"))
+	// Read from storage backend
+	reader, contentType, err := h.Store.Get(r.Context(), report.StorageKey)
+	if err != nil {
+		responses.ErrorJSON(w, http.StatusNotFound, fmt.Errorf("report file not found in storage"))
 		return
 	}
+	defer reader.Close()
 
-	// Set headers
-	w.Header().Set("Content-Type", "application/pdf")
-	// Use a friendly filename
+	// Set response headers
+	if contentType == "" {
+		contentType = "application/pdf"
+	}
 	filename := fmt.Sprintf("fortistack-%s-%s.pdf", report.ReportType, report.CreatedAt.Format("20060102"))
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 
-	// Serve file
-	http.ServeFile(w, r, path)
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.WriteHeader(http.StatusOK)
+
+	if _, err := io.Copy(w, reader); err != nil {
+		// Headers already sent, log and abort
+		fmt.Printf("error streaming PDF: %v\n", err)
+	}
 }

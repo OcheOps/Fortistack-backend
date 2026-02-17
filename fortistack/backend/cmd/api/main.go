@@ -8,6 +8,8 @@ import (
 	"fortistack/internal/auth"
 	"fortistack/internal/db"
 	"fortistack/internal/reports"
+	"fortistack/internal/scanner"
+	"fortistack/internal/storage"
 	"fortistack/internal/tenants"
 	"log/slog"
 	"net/http"
@@ -34,26 +36,36 @@ func main() {
 	}
 	defer db.Close()
 
-	// 3. Initialize Repos
+	// 3. Initialize Storage
+	ctx := context.Background()
+	store, err := storage.NewFromEnv(ctx)
+	if err != nil {
+		slog.Error("Failed to initialize storage", "error", err)
+		os.Exit(1)
+	}
+
+	// 4. Initialize Repos
 	tenantRepo := tenants.NewRepository()
 	reportRepo := reports.NewRepository()
-	// authRepo is implicitly used inside auth.Service or similar (users table)
+	scanRepo := scanner.NewRepository()
 
-	// 4. Initialize Services
+	// 5. Initialize Services
 	authService := auth.NewService()
 	tenantService := tenants.NewService(tenantRepo)
 	alertService := alerts.NewService(tenantRepo)
-	reportService := reports.NewService(reportRepo, tenantRepo, alertService)
+	reportService := reports.NewService(reportRepo, tenantRepo, alertService, store)
+	scanService := scanner.NewService(scanRepo, store)
 
-	// 5. Initialize Handlers
+	// 6. Initialize Handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	tenantHandler := handlers.NewTenantHandler(tenantService)
-	reportHandler := handlers.NewReportHandler(reportService)
+	reportHandler := handlers.NewReportHandler(reportService, store)
+	scanHandler := handlers.NewScanHandler(scanService)
 
-	// 6. Router
-	router := api.NewRouter(authHandler, tenantHandler, reportHandler)
+	// 7. Router
+	router := api.NewRouter(authHandler, tenantHandler, reportHandler, scanHandler)
 
-	// 7. Server
+	// 8. Server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -63,7 +75,7 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      router,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 120 * time.Second, // Increased for PDF streaming
 		IdleTimeout:  120 * time.Second,
 	}
 
@@ -75,16 +87,16 @@ func main() {
 		}
 	}()
 
-	// 8. Graceful Shutdown
+	// 9. Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	slog.Info("Shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err)
 	}
 

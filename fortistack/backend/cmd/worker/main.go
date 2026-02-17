@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fortistack/internal/alerts"
 	"fortistack/internal/db"
 	"fortistack/internal/reports"
 	"fortistack/internal/scheduler"
+	"fortistack/internal/storage"
 	"fortistack/internal/tenants"
 	"log/slog"
 	"os"
@@ -29,22 +31,29 @@ func main() {
 	}
 	defer db.Close()
 
-	// 3. Initialize Shared Services
-	// Worker needs Reports + Tenants + Alerts services
+	// 3. Initialize Storage
+	ctx := context.Background()
+	store, err := storage.NewFromEnv(ctx)
+	if err != nil {
+		slog.Error("Failed to initialize storage", "error", err)
+		os.Exit(1)
+	}
+
+	// 4. Initialize Shared Services
 	tenantRepo := tenants.NewRepository()
 	reportRepo := reports.NewRepository()
 
 	tenantService := tenants.NewService(tenantRepo)
 	alertService := alerts.NewService(tenantRepo)
-	reportService := reports.NewService(reportRepo, tenantRepo, alertService)
+	reportService := reports.NewService(reportRepo, tenantRepo, alertService, store)
 
-	// 4. Initialize Scheduler
+	// 5. Initialize Scheduler
 	sched := scheduler.NewScheduler(reportService, tenantService)
 
-	// 5. Start Scheduler
+	// 6. Start Scheduler
 	sched.Start()
 
-	// 6. Wait for Signal
+	// 7. Wait for Signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit

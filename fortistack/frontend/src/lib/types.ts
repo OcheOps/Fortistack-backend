@@ -44,7 +44,7 @@ export type Report = {
     report_period_start?: string;
     report_period_end?: string;
     global_score: number;
-    storage_path: string;
+    storage_key: string;
     created_at: string;
     details?: {
         score: {
@@ -87,4 +87,34 @@ export type RiskInput = {
     logging_enabled: boolean;
     access_review_recent: boolean;
     monthly_spend_spike_percent: number;
+};
+
+// Scanner
+export type ScanTarget = {
+    id: string;
+    tenant_id: string;
+    image: string;
+    label: string;
+    is_active: boolean;
+    created_at: string;
+};
+
+export type ScanRun = {
+    id: string;
+    tenant_id: string;
+    target_id: string;
+    image: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    score?: number;
+    risk_level?: string;
+    critical_count: number;
+    high_count: number;
+    medium_count: number;
+    low_count: number;
+    total_vulns: number;
+    summary?: string;
+    error_message?: string;
+    started_at?: string;
+    completed_at?: string;
+    created_at: string;
 };

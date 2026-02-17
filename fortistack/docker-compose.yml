@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fortistack}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Optionally initialize with init.sql if needed, but we do migrations separately
     ports:
       - "5432:5432"
     healthcheck:
@@ -17,6 +16,37 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # S3-compatible object storage for dev (prod = Ceph RGW)
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Auto-create the bucket on startup
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY:-minioadmin} ${STORAGE_S3_SECRET_KEY:-minioadmin};
+        mc mb local/${STORAGE_S3_BUCKET:-fortistack} --ignore-existing;
+        echo 'Bucket ready';
+      "
 
   api:
     build:
@@ -30,13 +60,22 @@ services:
       JWT_ISSUER: ${JWT_ISSUER}
       ACCESS_TOKEN_TTL_MIN: ${ACCESS_TOKEN_TTL_MIN:-15}
       REFRESH_TOKEN_TTL_HOURS: ${REFRESH_TOKEN_TTL_HOURS:-168}
-      REPORT_WORKDIR: ${REPORT_WORKDIR:-/app/reports}
+      REPORT_WORKDIR: /tmp/fortistack-pdf
       API_BASE_URL: ${API_BASE_URL}
+      # Storage config
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY: ${STORAGE_S3_ACCESS_KEY:-minioadmin}
+      STORAGE_S3_SECRET_KEY: ${STORAGE_S3_SECRET_KEY:-minioadmin}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-fortistack}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
+      STORAGE_S3_DISABLE_SSL: "true"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend/reports_volume:/app/reports
+      minio-init:
+        condition: service_completed_successfully
 
   worker:
     build:
@@ -46,18 +85,27 @@ services:
       DB_DSN: ${DB_DSN}
       MONTHLY_CRON: ${MONTHLY_CRON:-"0 0 1 * *"}
       CRON_TZ: ${CRON_TZ:-Africa/Lagos}
-      REPORT_WORKDIR: ${REPORT_WORKDIR:-/app/reports}
+      REPORT_WORKDIR: /tmp/fortistack-pdf
       API_BASE_URL: ${API_BASE_URL}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
+      # Storage config
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY: ${STORAGE_S3_ACCESS_KEY:-minioadmin}
+      STORAGE_S3_SECRET_KEY: ${STORAGE_S3_SECRET_KEY:-minioadmin}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-fortistack}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
+      STORAGE_S3_DISABLE_SSL: "true"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend/reports_volume:/app/reports
+      minio-init:
+        condition: service_completed_successfully
 
   frontend:
     build:
@@ -72,8 +120,4 @@ services:
 
 volumes:
   pgdata:
-  reports_volume: # Shared volume for PDFs? API needs to serve what worker creates.
-    # Yes, API serves download, Worker creates monthly reports.
-    # If they are on same host, bind mount `./reports_volume` works.
-    # In cloud (ECS/K8s), use EFS/S3.
-    # Locally, bind mount works fine.
+  minio_data:

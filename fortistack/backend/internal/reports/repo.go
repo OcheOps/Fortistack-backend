@@ -32,7 +32,7 @@ func (r *Repository) Save(ctx context.Context, report *Report) error {
 	}
 
 	return db.Pool.QueryRow(ctx, query,
-		report.TenantID, report.ReportType, start, end, report.GlobalScore, report.StoragePath,
+		report.TenantID, report.ReportType, start, end, report.GlobalScore, report.StorageKey,
 	).Scan(&report.ID, &report.CreatedAt)
 }
 
@@ -53,19 +53,14 @@ func (r *Repository) GetByTenantID(ctx context.Context, tenantID string, limit i
 
 	var reports []Report
 	for rows.Next() {
-		var r Report
-		// No, `report_period_start` is nullable. Use pointers or NullTime.
+		var rpt Report
 		var startPtr, endPtr *time.Time
-		if err := rows.Scan(&r.ID, &r.TenantID, &r.ReportType, &startPtr, &endPtr, &r.GlobalScore, &r.StoragePath, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&rpt.ID, &rpt.TenantID, &rpt.ReportType, &startPtr, &endPtr, &rpt.GlobalScore, &rpt.StorageKey, &rpt.CreatedAt); err != nil {
 			return nil, err
 		}
-		if startPtr != nil {
-			r.ReportPeriodStart = startPtr
-		}
-		if endPtr != nil {
-			r.ReportPeriodEnd = endPtr
-		}
-		reports = append(reports, r)
+		rpt.ReportPeriodStart = startPtr
+		rpt.ReportPeriodEnd = endPtr
+		reports = append(reports, rpt)
 	}
 	return reports, nil
 }
@@ -81,7 +76,7 @@ func (r *Repository) GetOne(ctx context.Context, id string) (*Report, error) {
 	var startPtr, endPtr *time.Time
 	err := db.Pool.QueryRow(ctx, query, id).Scan(
 		&rep.ID, &rep.TenantID, &rep.ReportType, &startPtr, &endPtr,
-		&rep.GlobalScore, &rep.StoragePath, &rep.CreatedAt,
+		&rep.GlobalScore, &rep.StorageKey, &rep.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

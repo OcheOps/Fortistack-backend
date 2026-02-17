@@ -13,19 +13,22 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install wkhtmltopdf here too, as worker generates PDFs!
+# Install wkhtmltopdf (for PDF generation) and trivy (for container scanning)
 RUN apt-get update && apt-get install -y \
     wkhtmltopdf \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Trivy
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
 COPY --from=builder /app/worker .
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/assets ./assets
-# Worker doesn't need migrations usually but safer to have consistent image
 COPY --from=builder /app/internal/db/migrations ./migrations
 
 # Environment defaults
-ENV REPORT_WORKDIR=/app/reports
+ENV REPORT_WORKDIR=/tmp/fortistack-pdf
 
 CMD ["./worker"]

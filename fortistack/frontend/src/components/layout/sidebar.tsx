@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, FileText, Settings, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Shield, ShieldAlert } from 'lucide-react';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Tenants', href: '/tenants', icon: Users, adminOnly: true },
     { name: 'Reports', href: '/reports', icon: FileText },
+    { name: 'Security Scans', href: '/scans', icon: ShieldAlert },
     { name: 'Integrations', href: '/integrations', icon: Settings },
 ];
 

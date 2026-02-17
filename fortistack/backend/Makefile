@@ -15,6 +15,7 @@ migrate:
 	# Run SQL files
 	cat internal/db/migrations/001_init.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
 	cat internal/db/migrations/002_indexes.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
+	cat internal/db/migrations/003_scans.sql | docker compose exec -T postgres psql -U fortistack -d fortistack
 	# Create default admin user (dynamic hash)
 	# This requires Go installed locally to run the hash generator
 	cat cmd/admin/main.go > /dev/null || true # Ensure file exists

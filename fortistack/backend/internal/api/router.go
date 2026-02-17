@@ -15,11 +15,12 @@ func NewRouter(
 	authHandler *handlers.AuthHandler,
 	tenantHandler *handlers.TenantHandler,
 	reportHandler *handlers.ReportHandler,
+	scanHandler *handlers.ScanHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
 	// Global Middleware
-	r.Use(chimiddleware.Recoverer) // Standard recovery
+	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RateLimit)
 
@@ -28,11 +29,10 @@ func NewRouter(
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		ExposedHeaders:   []string{"Link", "Content-Disposition"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
-	// r.Use(middleware.Logger) // TODO: Implement logger middleware or use chi default
 
 	// Public Routes
 	r.Get("/healthz", handlers.Healthz)
@@ -54,7 +54,7 @@ func NewRouter(
 			r.Get("/", middleware.RequireRole(auth.RoleAdmin)(http.HandlerFunc(tenantHandler.GetAll)).ServeHTTP)
 
 			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", tenantHandler.Get) // Perm check inside handler
+				r.Get("/", tenantHandler.Get)
 				r.Patch("/", middleware.RequireRole(auth.RoleAdmin)(http.HandlerFunc(tenantHandler.Update)).ServeHTTP)
 
 				// Admin create user for tenant
@@ -63,15 +63,28 @@ func NewRouter(
 				r.Get("/alert-config", tenantHandler.GetAlertConfig)
 				r.Put("/alert-config", tenantHandler.UpdateAlertConfig)
 
+				// Reports
 				r.Route("/reports", func(r chi.Router) {
 					r.Post("/snapshot", reportHandler.CreateSnapshot)
 					r.Post("/monthly", reportHandler.CreateMonthly)
 					r.Get("/", reportHandler.List)
 				})
+
+				// Scan Targets
+				r.Route("/scan-targets", func(r chi.Router) {
+					r.Post("/", scanHandler.CreateTarget)
+					r.Get("/", scanHandler.ListTargets)
+					r.Delete("/{targetId}", scanHandler.DeleteTarget)
+					r.Post("/{targetId}/scan", scanHandler.TriggerScan)
+				})
+
+				// Scan Runs
+				r.Get("/scans", scanHandler.ListRuns)
+				r.Get("/scans/{runId}", scanHandler.GetRun)
 			})
 		})
 
-		// Reports Download
+		// Reports Download (by report ID, not tenant-scoped URL)
 		r.Get("/reports/{id}/download", reportHandler.Download)
 	})
 

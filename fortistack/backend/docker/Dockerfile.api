@@ -13,21 +13,24 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install wkhtmltopdf and dependencies
+# Install wkhtmltopdf and trivy
 RUN apt-get update && apt-get install -y \
     wkhtmltopdf \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Trivy (needed if API triggers scans synchronously)
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
 COPY --from=builder /app/api .
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/assets ./assets
-# Copy migrations for potential migrate usage
 COPY --from=builder /app/internal/db/migrations ./migrations
 
 # Environment defaults
 ENV PORT=8080
-ENV REPORT_WORKDIR=/app/reports
+ENV REPORT_WORKDIR=/tmp/fortistack-pdf
 
 EXPOSE 8080
 
