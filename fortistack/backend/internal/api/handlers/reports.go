@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"fortistack/internal/api/middleware"
 	"fortistack/internal/api/responses"
 	"fortistack/internal/auth"
 	"fortistack/internal/reports"
 	"fortistack/internal/risk"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -119,6 +121,18 @@ func (h *ReportHandler) Download(w http.ResponseWriter, r *http.Request) {
 
 	// Get file path
 	path := report.StoragePath
+
+	// Verify file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		responses.ErrorJSON(w, http.StatusNotFound, fmt.Errorf("report file not found on disk"))
+		return
+	}
+
+	// Set headers
+	w.Header().Set("Content-Type", "application/pdf")
+	// Use a friendly filename
+	filename := fmt.Sprintf("fortistack-%s-%s.pdf", report.ReportType, report.CreatedAt.Format("20060102"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 
 	// Serve file
 	http.ServeFile(w, r, path)

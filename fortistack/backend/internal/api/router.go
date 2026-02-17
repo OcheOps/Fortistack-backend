@@ -38,6 +38,7 @@ func NewRouter(
 	r.Get("/healthz", handlers.Healthz)
 	r.Get("/readyz", handlers.Readyz)
 	r.Post("/auth/login", authHandler.Login)
+	r.Post("/auth/signup", authHandler.Signup)
 	r.Post("/auth/refresh", authHandler.Refresh)
 
 	// Protected Routes
@@ -55,6 +56,9 @@ func NewRouter(
 			r.Route("/{id}", func(r chi.Router) {
 				r.Get("/", tenantHandler.Get) // Perm check inside handler
 				r.Patch("/", middleware.RequireRole(auth.RoleAdmin)(http.HandlerFunc(tenantHandler.Update)).ServeHTTP)
+
+				// Admin create user for tenant
+				r.Post("/users", middleware.RequireRole(auth.RoleAdmin)(http.HandlerFunc(authHandler.CreateUser)).ServeHTTP)
 
 				r.Get("/alert-config", tenantHandler.GetAlertConfig)
 				r.Put("/alert-config", tenantHandler.UpdateAlertConfig)

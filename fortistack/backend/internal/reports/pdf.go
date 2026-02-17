@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,9 +51,13 @@ func (g *PDFGenerator) Generate(ctx context.Context, htmlContent string, reportI
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
+	slog.Info("Starting PDF generation", "report_id", reportID, "output_path", outputPath)
+
 	if err := cmd.Run(); err != nil {
+		slog.Error("wkhtmltopdf failed", "error", err, "stderr", stderr.String())
 		return "", fmt.Errorf("wkhtmltopdf failed: %v, stderr: %s", err, stderr.String())
 	}
 
+	slog.Info("PDF generation successful", "path", outputPath)
 	return outputPath, nil
 }

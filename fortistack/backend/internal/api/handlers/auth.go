@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fortistack/internal/api/responses"
 	"fortistack/internal/auth"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type AuthHandler struct {
@@ -36,6 +39,62 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"access_token":  tokenPair.AccessToken,
 		"refresh_token": tokenPair.RefreshToken,
 	})
+}
+
+func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		TenantName string `json:"tenant_name"`
+		Region     string `json:"region"`
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		responses.ErrorJSON(w, http.StatusBadRequest, err)
+		return
+	}
+
+	tokenPair, user, err := h.Service.Signup(r.Context(), input.TenantName, input.Region, input.Email, input.Password)
+	if err != nil {
+		responses.ErrorJSON(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	responses.JSON(w, http.StatusCreated, map[string]interface{}{
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"user":          user,
+	})
+}
+
+// CreateUser handles creating a user within a specific tenant (Admin only)
+func (h *AuthHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	tenantID := chi.URLParam(r, "id")
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		responses.ErrorJSON(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Validate role
+	role := auth.Role(input.Role)
+	if role != auth.RoleTenantAdmin && role != auth.RoleViewer {
+		responses.ErrorJSON(w, http.StatusBadRequest, errors.New("Invalid role"))
+		return
+	}
+
+	user, err := h.Service.CreateUserForTenant(r.Context(), tenantID, input.Email, input.Password, role)
+	if err != nil {
+		responses.ErrorJSON(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	responses.JSON(w, http.StatusCreated, user)
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {

@@ -103,20 +103,40 @@ export default function ReportsPage() {
             const res = await fetch(`${BASE_URL}/reports/${reportId}/download`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error('Download failed');
+
+            if (!res.ok) {
+                // Try to parse JSON error
+                try {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || 'Download failed');
+                } catch (e) {
+                    throw new Error(`Download failed: ${res.statusText}`);
+                }
+            }
+
+            // Extract filename from Content-Disposition if available
+            let filename = `fortistack-report-${reportId}.pdf`;
+            const disposition = res.headers.get('Content-Disposition');
+            if (disposition && disposition.includes('filename=')) {
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
+            }
 
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `fortistack-report-${reportId}.pdf`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             toast.success('Download started');
-        } catch (e) {
-            toast.error('Download failed');
+        } catch (e: any) {
+            console.error(e);
+            toast.error(e.message || 'Download failed');
         }
     };
 

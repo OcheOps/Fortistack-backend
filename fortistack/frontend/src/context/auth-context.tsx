@@ -12,6 +12,7 @@ interface AuthContextType {
     activeTenant: string | null;
     setActiveTenant: (tenantId: string) => void;
     login: (email: string, pass: string) => Promise<void>;
+    signup: (tenantName: string, region: string, email: string, pass: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -103,6 +104,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         router.push('/dashboard');
     };
 
+    const signup = async (tenantName: string, region: string, email: string, pass: string) => {
+        const data = await api.post<LoginResponse & { user: User }>('/auth/signup', {
+            tenant_name: tenantName,
+            region,
+            email,
+            password: pass
+        });
+
+        const { access_token, refresh_token } = data;
+
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+
+        const decodedUser = decodeUser(access_token);
+        setUser(decodedUser);
+
+        if (decodedUser) {
+            setActiveTenantState(decodedUser.tenant_id);
+            localStorage.setItem('active_tenant_id', decodedUser.tenant_id);
+        }
+
+        router.push('/dashboard');
+    };
+
     const logout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -113,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, activeTenant, setActiveTenant, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, activeTenant, setActiveTenant, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

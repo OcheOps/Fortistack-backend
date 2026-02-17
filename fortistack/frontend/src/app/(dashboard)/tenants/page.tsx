@@ -28,6 +28,8 @@ export default function TenantsPage() {
     const [name, setName] = useState('');
     const [region, setRegion] = useState('us-east-1');
     const [isActive, setIsActive] = useState(true);
+    const [adminEmail, setAdminEmail] = useState('');
+    const [adminPassword, setAdminPassword] = useState('');
 
     useEffect(() => {
         if (user?.role === 'admin') {
@@ -52,6 +54,8 @@ export default function TenantsPage() {
         setName('');
         setRegion('us-east-1');
         setIsActive(true);
+        setAdminEmail('');
+        setAdminPassword('');
         setDialogOpen(true);
     };
 
@@ -60,6 +64,8 @@ export default function TenantsPage() {
         setName(t.name);
         setRegion(t.region);
         setIsActive(t.is_active);
+        setAdminEmail('');
+        setAdminPassword('');
         setDialogOpen(true);
     };
 
@@ -73,8 +79,24 @@ export default function TenantsPage() {
                 toast.success('Tenant updated');
             } else {
                 // Create
-                await api.post('/tenants', { name, region }); // Create endpoint might not take is_active, defaults true
-                toast.success('Tenant created');
+                const newTenant: any = await api.post('/tenants', { name, region });
+
+                // If admin email provided, create user
+                if (adminEmail && adminPassword && newTenant?.id) {
+                    try {
+                        await api.post(`/tenants/${newTenant.id}/users`, {
+                            email: adminEmail,
+                            password: adminPassword,
+                            role: 'tenant_admin'
+                        });
+                        toast.success('Tenant and Admin User created');
+                    } catch (err) {
+                        toast.error('Tenant created, but failed to create Admin User');
+                        console.error(err);
+                    }
+                } else {
+                    toast.success('Tenant created');
+                }
             }
             setDialogOpen(false);
             fetchTenants();
@@ -162,6 +184,33 @@ export default function TenantsPage() {
                                 <Label>Region</Label>
                                 <Input value={region} onChange={e => setRegion(e.target.value)} required className="bg-[#0B1220] border-[#1D2A44]" />
                             </div>
+                            {!editingTenant && (
+                                <>
+                                    <div className="border-t border-[#1D2A44] my-2 pt-2">
+                                        <p className="text-xs text-[#A9B5C7] mb-2 uppercase tracking-wider font-semibold">Initial Admin User (Optional)</p>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Admin Email</Label>
+                                        <Input
+                                            type="email"
+                                            value={adminEmail}
+                                            onChange={e => setAdminEmail(e.target.value)}
+                                            placeholder="admin@tenant.com"
+                                            className="bg-[#0B1220] border-[#1D2A44]"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Admin Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={adminPassword}
+                                            onChange={e => setAdminPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            className="bg-[#0B1220] border-[#1D2A44]"
+                                        />
+                                    </div>
+                                </>
+                            )}
                             {editingTenant && (
                                 <div className="flex items-center space-x-2">
                                     <input

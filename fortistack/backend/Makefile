@@ -28,3 +28,8 @@ run:
 clean:
 	docker compose down
 	rm -rf bin/
+
+seed:
+	# Run the Go seed script
+	# Default DSN assumes local docker setup
+	DB_DSN="postgres://fortistack:fortistaticpassword@localhost:5432/fortistack?sslmode=disable" go run cmd/seed/main.go
